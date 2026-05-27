@@ -1,0 +1,15 @@
+{
+  "name": "kube-pacman",
+  "version": "1.0.0",
+  "description": "A Pac-Man inspired Kubernetes chaos engineering demo.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

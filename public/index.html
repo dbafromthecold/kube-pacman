@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kube Pac-Man</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="game-panel">
+        <div class="topbar">
+          <div>
+            <h1>Kube Pac-Man</h1>
+            <p id="podLine">Connecting to cluster metadata...</p>
+          </div>
+          <div class="stats" aria-label="Game status">
+            <span>Score <strong id="score">0</strong></span>
+            <span>Lives <strong id="lives">3</strong></span>
+            <span>Pods <strong id="level">0</strong></span>
+          </div>
+        </div>
+
+        <canvas id="game" width="608" height="736" aria-label="Kube Pac-Man game board"></canvas>
+
+        <div class="controls">
+          <button type="button" id="restart">Restart</button>
+          <button type="button" id="pause">Pause</button>
+          <span id="message">Use arrow keys or WASD.</span>
+        </div>
+      </section>
+
+      <aside class="cluster-panel">
+        <h2>Chaos Targets</h2>
+        <dl>
+          <div><dt>Pod</dt><dd id="podName">local</dd></div>
+          <div><dt>App Namespace</dt><dd id="namespace">local</dd></div>
+          <div><dt>Target Namespace</dt><dd id="targetNamespace">default</dd></div>
+          <div><dt>Node</dt><dd id="nodeName">local</dd></div>
+          <div><dt>Pod IP</dt><dd id="podIp">127.0.0.1</dd></div>
+          <div><dt>Uptime</dt><dd id="uptime">0s</dd></div>
+        </dl>
+        <p class="hint">Dots are running pods in the default namespace. Eat a dot to delete that pod and watch Kubernetes repair the workload.</p>
+      </aside>
+    </main>
+    <script src="game.js"></script>
+  </body>
+</html>
