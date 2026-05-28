@@ -8,6 +8,9 @@ Dots on the board represent running pods in the `default` namespace. Eating a do
 
 Currently this is only available to run locally
 
+<img width="799" height="717" alt="image" src="https://github.com/user-attachments/assets/d4d1b4cb-a5bd-489a-bf2b-2bb3259f8a9f" />
+
+
 ## Build the image
 
 ```
