@@ -6,16 +6,19 @@ A small Pac-Man inspired game for Kubernetes chaos engineering demos. The game i
 
 Dots on the board represent running pods in the `default` namespace. Eating a dot sends a Kubernetes API request to delete the corresponding pod. The cluster activity feed shows deletion requests, successful deletes, failed deletes, and replacement pods that become running while the game refreshes. Use **Auto Play** to let the game steer itself toward pods during a demo.
 
+Currently this is only available to run locally
 
 ## Build the image
 
-```docker build -t kube-pacman:latest .
+```
+docker build -t kube-pacman:latest .
 ```
 
 
 ## Deploy to Kubernetes
 
-```kubectl apply -k k8s
+```
+kubectl apply -k k8s
 kubectl -n kube-pacman get pods -o wide
 kubectl -n kube-pacman port-forward svc/kube-pacman 8080:80
 ```
