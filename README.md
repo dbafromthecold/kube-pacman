@@ -6,26 +6,6 @@ A small Pac-Man inspired game for Kubernetes chaos engineering demos. The game i
 
 Dots on the board represent running pods in the `default` namespace. Eating a dot sends a Kubernetes API request to delete the corresponding pod.
 
-## Run locally
-
-```powershell
-npm install
-npm start
-```
-
-Open `http://localhost:8080`.
-
-## Build the image
-
-```powershell
-docker build -t kube-pacman:latest .
-```
-
-For Kind:
-
-```powershell
-kind load docker-image kube-pacman:latest
-```
 
 ## Deploy to Kubernetes
 
