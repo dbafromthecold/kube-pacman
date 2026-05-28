@@ -135,6 +135,12 @@ button:hover {
   border-color: var(--cyan);
 }
 
+button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: #3a310f;
+  color: var(--accent);
+}
+
 #message {
   color: var(--muted);
   font-size: 0.95rem;
@@ -164,6 +170,91 @@ dt {
 dd {
   margin: 0.15rem 0 0;
   overflow-wrap: anywhere;
+}
+
+.activity-panel {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.activity-header h2 {
+  margin-bottom: 0;
+}
+
+.activity-header button {
+  min-height: 2rem;
+  padding: 0 0.65rem;
+  font-size: 0.85rem;
+}
+
+.activity-feed {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-item,
+.activity-empty {
+  display: grid;
+  grid-template-columns: 0.65rem minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: start;
+  min-height: 2.35rem;
+  padding: 0.55rem 0.65rem;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.activity-empty {
+  display: block;
+}
+
+.activity-marker {
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-top: 0.3rem;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.activity-detail {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.activity-item time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-deleting .activity-marker {
+  background: var(--accent);
+}
+
+.activity-deleted .activity-marker {
+  background: var(--danger);
+}
+
+.activity-created .activity-marker {
+  background: #7ee787;
+}
+
+.activity-error .activity-marker {
+  background: #ff9f43;
 }
 
 @media (max-width: 980px) {

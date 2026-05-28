@@ -33,13 +33,17 @@ const state = {
   lives: 3,
   level: 1,
   paused: false,
+  autoPlay: false,
   over: false,
   frightUntil: 0,
   pellets: new Map(),
   deleting: new Set(),
   player: null,
   ghosts: [],
-  podNamespace: "default"
+  podNamespace: "default",
+  activity: [],
+  knownPods: null,
+  pendingReplacements: 0
 };
 
 const dirs = {
@@ -52,6 +56,13 @@ const dirs = {
   ArrowRight: { x: 1, y: 0 },
   KeyD: { x: 1, y: 0 }
 };
+
+const moveOptions = [
+  { x: 1, y: 0 },
+  { x: -1, y: 0 },
+  { x: 0, y: 1 },
+  { x: 0, y: -1 }
+];
 
 const ghostSeeds = [
   { x: 8, y: 10, color: "#ff5d73", name: "pod-killer" },
@@ -98,11 +109,17 @@ function resetGame() {
   state.lives = 3;
   state.level = 1;
   state.paused = false;
+  state.autoPlay = false;
   state.over = false;
   state.frightUntil = 0;
+  state.activity = [];
+  state.knownPods = null;
+  state.pendingReplacements = 0;
   resetLevel();
   loadPods();
   updateHud();
+  updateAutoPlayButton();
+  renderActivity();
   setMessage("Use arrow keys or WASD.");
 }
 
@@ -116,7 +133,63 @@ function setMessage(text) {
   document.querySelector("#message").textContent = text;
 }
 
+function updateAutoPlayButton() {
+  const button = document.querySelector("#autoPlay");
+  button.textContent = state.autoPlay ? "Manual Play" : "Auto Play";
+  button.setAttribute("aria-pressed", String(state.autoPlay));
+}
+
+function addActivity(type, text) {
+  const event = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    type,
+    text,
+    time: new Date()
+  };
+
+  state.activity.unshift(event);
+  state.activity = state.activity.slice(0, 8);
+  renderActivity();
+}
+
+function renderActivity() {
+  const feed = document.querySelector("#activityFeed");
+  feed.replaceChildren();
+
+  if (state.activity.length === 0) {
+    const item = document.createElement("li");
+    item.className = "activity-empty";
+    item.textContent = "Waiting for pod changes.";
+    feed.append(item);
+    return;
+  }
+
+  state.activity.forEach((event) => {
+    const item = document.createElement("li");
+    item.className = `activity-item activity-${event.type}`;
+
+    const marker = document.createElement("span");
+    marker.className = "activity-marker";
+    marker.setAttribute("aria-hidden", "true");
+
+    const detail = document.createElement("span");
+    detail.className = "activity-detail";
+    detail.textContent = event.text;
+
+    const time = document.createElement("time");
+    time.dateTime = event.time.toISOString();
+    time.textContent = event.time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+    item.append(marker, detail, time);
+    feed.append(item);
+  });
+}
+
 function movePlayer() {
+  if (state.autoPlay) {
+    state.player.next = chooseAutoDirection();
+  }
+
   const nextX = state.player.x + state.player.next.x;
   const nextY = state.player.y + state.player.next.y;
   if (!isWall(nextX, nextY)) state.player.dir = state.player.next;
@@ -141,6 +214,7 @@ async function eatPod(id, pod) {
   state.score += 100;
   updateHud();
   setMessage(`Deleting pod ${pod.name}...`);
+  addActivity("deleting", `Deleting ${pod.name}`);
 
   try {
     const response = await fetch(`/api/pods/${encodeURIComponent(pod.name)}`, { method: "DELETE" });
@@ -149,10 +223,13 @@ async function eatPod(id, pod) {
       throw new Error(body.message || body.error || `HTTP ${response.status}`);
     }
     setMessage(`Deleted ${pod.name}.`);
+    state.pendingReplacements += 1;
+    addActivity("deleted", `Deleted ${pod.name}`);
     setTimeout(loadPods, 2500);
   } catch (error) {
     state.pellets.set(id, pod);
     setMessage(`Could not delete ${pod.name}: ${error.message}`);
+    addActivity("error", `Delete failed for ${pod.name}`);
   } finally {
     state.deleting.delete(pod.name);
     updateHud();
@@ -161,12 +238,7 @@ async function eatPod(id, pod) {
 
 function moveGhost(ghost) {
   const frightened = performance.now() < state.frightUntil;
-  const options = [
-    { x: 1, y: 0 },
-    { x: -1, y: 0 },
-    { x: 0, y: 1 },
-    { x: 0, y: -1 }
-  ].filter((dir) => !isWall(ghost.x + dir.x, ghost.y + dir.y));
+  const options = moveOptions.filter((dir) => !isWall(ghost.x + dir.x, ghost.y + dir.y));
 
   const opposite = { x: -ghost.dir.x, y: -ghost.dir.y };
   const usable = options.length > 1
@@ -187,6 +259,92 @@ function moveGhost(ghost) {
 
 function distance(ax, ay, bx, by) {
   return Math.abs(ax - bx) + Math.abs(ay - by);
+}
+
+function chooseAutoDirection() {
+  if (state.pellets.size === 0) {
+    return state.player.dir;
+  }
+
+  return findPathToPod(true) || findPathToPod(false) || safestDirection() || state.player.dir;
+}
+
+function findPathToPod(avoidGhosts) {
+  const startId = key(state.player.x, state.player.y);
+  const targets = new Set(state.pellets.keys());
+  const danger = ghostDangerCells();
+  const queue = [{ x: state.player.x, y: state.player.y, first: null }];
+  const visited = new Set([startId]);
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    const currentId = key(current.x, current.y);
+
+    if (targets.has(currentId) && currentId !== startId) {
+      return current.first || { x: 0, y: 0 };
+    }
+
+    const options = moveOptions
+      .filter((dir) => !isWall(current.x + dir.x, current.y + dir.y))
+      .sort((a, b) => scoreAutoStep(current.x, current.y, b) - scoreAutoStep(current.x, current.y, a));
+
+    options.forEach((dir) => {
+      const x = current.x + dir.x;
+      const y = current.y + dir.y;
+      const id = key(x, y);
+
+      if (visited.has(id) || (avoidGhosts && danger.has(id))) {
+        return;
+      }
+
+      visited.add(id);
+      queue.push({
+        x,
+        y,
+        first: current.first || dir
+      });
+    });
+  }
+
+  return null;
+}
+
+function ghostDangerCells() {
+  const danger = new Set();
+
+  state.ghosts.forEach((ghost) => {
+    danger.add(key(ghost.x, ghost.y));
+    moveOptions.forEach((dir) => {
+      const x = ghost.x + dir.x;
+      const y = ghost.y + dir.y;
+      if (!isWall(x, y)) {
+        danger.add(key(x, y));
+      }
+    });
+  });
+
+  return danger;
+}
+
+function scoreAutoStep(x, y, dir) {
+  const nextX = x + dir.x;
+  const nextY = y + dir.y;
+  const nearestGhost = state.ghosts.reduce(
+    (nearest, ghost) => Math.min(nearest, distance(nextX, nextY, ghost.x, ghost.y)),
+    Infinity
+  );
+  const nearestPod = [...state.pellets.keys()].reduce((nearest, id) => {
+    const [podX, podY] = id.split(",").map(Number);
+    return Math.min(nearest, distance(nextX, nextY, podX, podY));
+  }, Infinity);
+
+  return nearestGhost * 4 - nearestPod;
+}
+
+function safestDirection() {
+  return moveOptions
+    .filter((dir) => !isWall(state.player.x + dir.x, state.player.y + dir.y))
+    .sort((a, b) => scoreAutoStep(state.player.x, state.player.y, b) - scoreAutoStep(state.player.x, state.player.y, a))[0];
 }
 
 function collisions() {
@@ -325,6 +483,8 @@ function loop(now) {
 
 document.addEventListener("keydown", (event) => {
   if (dirs[event.code]) {
+    state.autoPlay = false;
+    updateAutoPlayButton();
     state.player.next = dirs[event.code];
     event.preventDefault();
   }
@@ -335,6 +495,15 @@ document.querySelector("#restart").addEventListener("click", resetGame);
 document.querySelector("#pause").addEventListener("click", () => {
   state.paused = !state.paused;
   document.querySelector("#pause").textContent = state.paused ? "Resume" : "Pause";
+});
+document.querySelector("#autoPlay").addEventListener("click", () => {
+  state.autoPlay = !state.autoPlay;
+  updateAutoPlayButton();
+  setMessage(state.autoPlay ? "Auto play is steering toward pods." : "Manual play enabled.");
+});
+document.querySelector("#clearActivity").addEventListener("click", () => {
+  state.activity = [];
+  renderActivity();
 });
 
 async function loadStatus() {
@@ -384,6 +553,18 @@ async function loadPods() {
     if (!response.ok) {
       throw new Error(body.message || body.error || `HTTP ${response.status}`);
     }
+
+    const currentPods = new Set(body.pods.map((pod) => pod.name));
+    if (state.knownPods) {
+      currentPods.forEach((podName) => {
+        if (!state.knownPods.has(podName)) {
+          const isReplacement = state.pendingReplacements > 0;
+          addActivity("created", `${isReplacement ? "Replacement running" : "Running pod appeared"}: ${podName}`);
+          state.pendingReplacements = Math.max(0, state.pendingReplacements - 1);
+        }
+      });
+    }
+    state.knownPods = currentPods;
 
     const cells = podCells();
     const used = new Set();

@@ -26,6 +26,7 @@
         <div class="controls">
           <button type="button" id="restart">Restart</button>
           <button type="button" id="pause">Pause</button>
+          <button type="button" id="autoPlay" aria-pressed="false">Auto Play</button>
           <span id="message">Use arrow keys or WASD.</span>
         </div>
       </section>
@@ -41,6 +42,14 @@
           <div><dt>Uptime</dt><dd id="uptime">0s</dd></div>
         </dl>
         <p class="hint">Dots are running pods in the default namespace. Eat a dot to delete that pod and watch Kubernetes repair the workload.</p>
+
+        <section class="activity-panel" aria-labelledby="activityTitle">
+          <div class="activity-header">
+            <h2 id="activityTitle">Cluster Activity</h2>
+            <button type="button" id="clearActivity">Clear</button>
+          </div>
+          <ol id="activityFeed" class="activity-feed" aria-live="polite" aria-label="Pod deletion and recreation events"></ol>
+        </section>
       </aside>
     </main>
     <script src="game.js"></script>

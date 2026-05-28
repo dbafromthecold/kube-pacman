@@ -4,13 +4,18 @@ Inspired by kubeinvaders! https://github.com/lucky-sideburn/KubeInvaders
 
 A small Pac-Man inspired game for Kubernetes chaos engineering demos. The game is served from a Node.js container and exposes pod metadata in the UI so players can see which pod, namespace, node, and pod IP are currently handling their session.
 
-Dots on the board represent running pods in the `default` namespace. Eating a dot sends a Kubernetes API request to delete the corresponding pod.
+Dots on the board represent running pods in the `default` namespace. Eating a dot sends a Kubernetes API request to delete the corresponding pod. The cluster activity feed shows deletion requests, successful deletes, failed deletes, and replacement pods that become running while the game refreshes. Use **Auto Play** to let the game steer itself toward pods during a demo.
+
+
+## Build the image
+
+```docker build -t kube-pacman:latest .
+```
 
 
 ## Deploy to Kubernetes
 
-```powershell
-kubectl apply -k k8s
+```kubectl apply -k k8s
 kubectl -n kube-pacman get pods -o wide
 kubectl -n kube-pacman port-forward svc/kube-pacman 8080:80
 ```
@@ -18,6 +23,7 @@ kubectl -n kube-pacman port-forward svc/kube-pacman 8080:80
 Open `http://localhost:8080`.
 
 The app runs in the `kube-pacman` namespace, but its service account is granted `get`, `list`, `watch`, and `delete` permissions for pods in the `default` namespace only. Change `TARGET_NAMESPACE` in `k8s/deployment.yaml` and the namespace in `k8s/rbac.yaml` if you want the board to target a different namespace.
+
 
 ## Chaos engineering ideas
 
@@ -56,6 +62,7 @@ Suggested observations:
 - Scaling down reduces redundancy and makes failures more visible.
 - Draining a node tests rescheduling and the PodDisruptionBudget.
 - CPU or network latency experiments should be visible as stutters, slow UI refreshes, or connection failures.
+
 
 ## Endpoints
 
